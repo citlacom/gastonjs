@@ -108,6 +108,8 @@ class BrowserBase {
         /** @var $commandResponse \GuzzleHttp\Psr7\Response|\GuzzleHttp\Message\Response */
         $commandResponse = $this->getApiClient()->post("/api", array("body" => $messageToSend));
         $jsonResponse = json_decode($commandResponse->getBody(), TRUE);
+        // Request completed well, no more attempts needed.
+        break;
       }
       catch (ServerException $e) {
         $jsonResponse = json_decode($e->getResponse()->getBody()->getContents(), true);
