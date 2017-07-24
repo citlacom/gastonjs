@@ -34,7 +34,7 @@ class BrowserBase {
         "base_uri" => $this->getPhantomJSHost(),
         "timeout" => $this->getClientTimeout(),
       );
-      $this->apiClient = new Client($option);
+      $this->apiClient = new Client($options);
     }
     else {
       $options = array(
