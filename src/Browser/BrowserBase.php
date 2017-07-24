@@ -19,6 +19,8 @@ class BrowserBase {
   protected $debug;
   /** @var  string */
   protected $phantomJSHost;
+  /** @var  int */
+  protected $clientTimeout;
   /** @var  Client */
   protected $apiClient;
 
@@ -28,11 +30,17 @@ class BrowserBase {
   protected function createApiClient() {
     // Provide a BC switch between guzzle 5 and guzzle 6.
     if (class_exists('GuzzleHttp\Psr7\Response')) {
-      $options = array("base_uri" => $this->getPhantomJSHost(), "timeout" => 5);
+      $options = array(
+        "base_uri" => $this->getPhantomJSHost(),
+        "timeout" => $this->getClientTimeout(),
+      );
       $this->apiClient = new Client($option);
     }
     else {
-      $options = array("base_url" => $this->getPhantomJSHost(), "timeout" => 5);
+      $options = array(
+        "base_url" => $this->getPhantomJSHost(),
+        "timeout" => $this->getClientTimeout(),
+      );
       $this->apiClient = new Client($options);
     }
   }
@@ -58,6 +66,13 @@ class BrowserBase {
    */
   public function getPhantomJSHost() {
     return $this->phantomJSHost;
+  }
+
+  /**
+   * @return string
+   */
+  public function getClientTimeout() {
+    return $this->clientTimeout;
   }
 
   /**

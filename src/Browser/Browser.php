@@ -27,10 +27,11 @@ class Browser extends BrowserBase {
    * @param string $phantomJSHost
    * @param mixed  $logger
    */
-  public function __construct($phantomJSHost, $logger = null) {
+  public function __construct($phantomJSHost, $logger = null, $timeout = 5) {
     $this->phantomJSHost = $phantomJSHost;
     $this->logger = $logger;
     $this->debug = false;
+    $this->clientTimeout = $timeout;
     $this->createApiClient();
   }
 
