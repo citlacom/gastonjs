@@ -96,24 +96,46 @@ class BrowserBase {
    * @return mixed
    */
   public function command() {
-    try {
-      $args = func_get_args();
-      $commandName = $args[0];
-      array_shift($args);
-      $messageToSend = json_encode(array('name' => $commandName, 'args' => $args));
-      /** @var $commandResponse \GuzzleHttp\Psr7\Response|\GuzzleHttp\Message\Response */
-      $commandResponse = $this->getApiClient()->post("/api", array("body" => $messageToSend));
-      $jsonResponse = json_decode($commandResponse->getBody(), TRUE);
-    } catch (ServerException $e) {
-      $jsonResponse = json_decode($e->getResponse()->getBody()->getContents(), true);
-    } catch (ConnectException $e) {
-      throw new DeadClient($e->getMessage(), $e->getCode(), $e);
-    } catch (\Exception $e) {
-      throw $e;
-    }
+    $max_attempts = 5;
+    $wait_seconds = 10;
 
-    if (isset($jsonResponse['error'])) {
-      throw $this->getErrorClass($jsonResponse);
+    for ($i = 1; $i <= $max_attempts; $i++) {
+      try {
+        $args = func_get_args();
+        $commandName = $args[0];
+        array_shift($args);
+        $messageToSend = json_encode(array('name' => $commandName, 'args' => $args));
+        /** @var $commandResponse \GuzzleHttp\Psr7\Response|\GuzzleHttp\Message\Response */
+        $commandResponse = $this->getApiClient()->post("/api", array("body" => $messageToSend));
+        $jsonResponse = json_decode($commandResponse->getBody(), TRUE);
+      }
+      catch (ServerException $e) {
+        $jsonResponse = json_decode($e->getResponse()->getBody()->getContents(), true);
+
+        if ($i == $max_attempts) {
+          if (isset($jsonResponse['error'])) {
+            throw $this->getErrorClass($jsonResponse);
+          }
+
+          if (empty($jsonResponse) || (isset($jsonResponse['response']) && empty($jsonResponse['response']))) {
+            throw new \Exception("GastonJS command request response is empty.");
+          }
+        }
+        else {
+          // Wait some seconds for the next attempt.
+          sleep($wait_seconds);
+        }
+      }
+      catch (Exception $e) {
+        if ($i == $max_attempts) {
+          $error = $e->getMessage();
+          throw new \Exception("GastonJS command request failed: $error.");
+        }
+        else {
+          // Wait some seconds for the next attempt.
+          sleep($wait_seconds);
+        }
+      }
     }
 
     return $jsonResponse['response'];
