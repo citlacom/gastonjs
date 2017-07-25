@@ -97,47 +97,71 @@ class BrowserBase {
    */
   public function command() {
     $max_attempts = 5;
-    $wait_seconds = 10;
+    $wait_time = 5;
+    $args = func_get_args();
+    $commandName = $args[0];
+    array_shift($args);
+    $messageToSend = json_encode(array('name' => $commandName, 'args' => $args));
 
     for ($i = 1; $i <= $max_attempts; $i++) {
+      $status = FALSE;
+      $jsonResponse = FALSE;
+
       try {
-        $args = func_get_args();
-        $commandName = $args[0];
-        array_shift($args);
-        $messageToSend = json_encode(array('name' => $commandName, 'args' => $args));
         /** @var $commandResponse \GuzzleHttp\Psr7\Response|\GuzzleHttp\Message\Response */
         $commandResponse = $this->getApiClient()->post("/api", array("body" => $messageToSend));
-        $jsonResponse = json_decode($commandResponse->getBody(), TRUE);
-        // Request completed well, no more attempts needed.
-        break;
-      }
-      catch (ServerException $e) {
+        $status = $commandResponse->getStatusCode();
+
+        // If response was sucessful, no more attempts needed.
+        if ($status === 200) {
+          $body = $commandResponse->getBody();
+          $jsonResponse = json_decode($body, TRUE);
+          $response_keys = array_keys($jsonResponse);
+          if ($response_keys && in_array('response', $response_keys)) {
+            break;
+          }
+        }
+      } catch (ServerException $e) {
         $jsonResponse = json_decode($e->getResponse()->getBody()->getContents(), true);
-
-        if ($i == $max_attempts) {
-          if (isset($jsonResponse['error'])) {
-            throw $this->getErrorClass($jsonResponse);
-          }
-
-          if (empty($jsonResponse) || (isset($jsonResponse['response']) && empty($jsonResponse['response']))) {
-            throw new \Exception("GastonJS command request response is empty.");
-          }
+        // In case that element was obsolete is possible that previous attempt
+        // was sucessful and we are at a new page, let's keep going.
+        if (isset($jsonResponse['error']['name']) && $jsonResponse['error']['name'] == 'Poltergeist.ObsoleteNode') {
+          $jsonResponse = FALSE;
+          break;
         }
-        else {
-          // Wait some seconds for the next attempt.
-          sleep($wait_seconds);
+      } catch (ConnectException $e) {
+        if ($i == $max_attempts) {
+          throw new DeadClient($e->getMessage(), $e->getCode(), $e);
+        }
+      } catch (\Exception $e) {
+        if ($i == $max_attempts) {
+          throw $e;
         }
       }
-      catch (Exception $e) {
-        if ($i == $max_attempts) {
-          $error = $e->getMessage();
-          throw new \Exception("GastonJS command request failed: $error.");
-        }
-        else {
-          // Wait some seconds for the next attempt.
-          sleep($wait_seconds);
-        }
+
+      echo sprintf("GastonJS request retry: #%d:\n%s\n", $i, $messageToSend);
+
+      if ($status) {
+        echo sprintf("Status: %s\n", $status);
       }
+
+      if ($jsonResponse) {
+        echo sprintf("Response: %s\n", print_r($jsonResponse, 1));
+      }
+
+      if (isset($e)) {
+        $error = $e->getMessage();
+        echo sprintf("Error: %s\n", $error);
+      }
+
+      if ($i < $max_attempts) {
+        echo sprintf("Wait %d seconds to try again.\n", $wait_time);
+        sleep($wait_time);
+      }
+    }
+
+    if (isset($jsonResponse['error'])) {
+      throw $this->getErrorClass($jsonResponse);
     }
 
     return $jsonResponse['response'];

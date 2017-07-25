@@ -28,7 +28,7 @@ class Browser extends BrowserBase {
    * @param mixed  $logger
    * @param int $timeout
    */
-  public function __construct($phantomJSHost, $logger = null, $timeout = 5) {
+  public function __construct($phantomJSHost, $logger = null, $timeout = 40) {
     $this->phantomJSHost = $phantomJSHost;
     $this->logger = $logger;
     $this->debug = false;
