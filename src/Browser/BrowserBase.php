@@ -96,8 +96,8 @@ class BrowserBase {
    * @return mixed
    */
   public function command() {
-    $max_attempts = 5;
-    $wait_time = 5;
+    $max_attempts = 3;
+    $wait_time = 2;
     $args = func_get_args();
     $commandName = $args[0];
     array_shift($args);
