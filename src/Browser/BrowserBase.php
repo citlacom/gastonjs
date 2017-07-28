@@ -131,11 +131,11 @@ class BrowserBase {
         }
       } catch (ConnectException $e) {
         if ($i == $max_attempts) {
-          throw new DeadClient($e->getMessage(), $e->getCode(), $e);
+          $exception = new DeadClient($e->getMessage(), $e->getCode(), $e);
         }
       } catch (\Exception $e) {
         if ($i == $max_attempts) {
-          throw $e;
+          $exception = $e;
         }
       }
 
@@ -154,6 +154,13 @@ class BrowserBase {
         echo sprintf("Error: %s\n", $error);
       }
 
+      // Enable the disabled input elements to allow retry press / submit actions.
+      if ($commandName == 'click') {
+        $js = "var inputs = document.getElementsByTagName('input');
+          for (var i = 0; i < inputs.length; i++) { inputs[i].disabled = false; }";
+        $this->execute($js);
+      }
+
       if ($i < $max_attempts) {
         echo sprintf("Wait %d seconds to try again.\n", $wait_time);
         sleep($wait_time);
@@ -162,6 +169,10 @@ class BrowserBase {
 
     if (isset($jsonResponse['error'])) {
       throw $this->getErrorClass($jsonResponse);
+    }
+
+    if (isset($exception)) {
+      throw $exception;
     }
 
     return $jsonResponse['response'];
