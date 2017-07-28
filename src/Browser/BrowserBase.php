@@ -126,7 +126,8 @@ class BrowserBase {
         // In case that element was obsolete is possible that previous attempt
         // was sucessful and we are at a new page, let's keep going.
         if (isset($jsonResponse['error']['name']) && $jsonResponse['error']['name'] == 'Poltergeist.ObsoleteNode') {
-          echo "Error Poltergeist.ObsoleteNode.\n";
+          echo "Error Poltergeist.ObsoleteNode, trying a reload.\n";
+          $this->reload();
           $jsonResponse = FALSE;
           break;
         }
